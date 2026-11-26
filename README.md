@@ -84,3 +84,16 @@ No hace falta instalar paquetes. Firebase se carga desde la CDN oficial mediante
 El temporizador se sincroniza usando `turnStartedAt` en Firebase Realtime Database. Los clientes conectados intentan aplicar el timeout mediante una transacción, por lo que solo una actualización debería consolidarse. Es una solución adecuada para pruebas privadas, pero no es anti-trampas: un cliente modificado puede intentar manipular datos. Para partidas públicas, la gestión del tiempo, los descartes aleatorios y la puntuación deben ejecutarse en Cloud Functions o en un backend autoritativo.
 
 La puntuación se aplica cuando un jugador se queda sin cartas tras bajar una combinación: suma los puntos de las cartas que conservan los demás jugadores. Si alcanza 100 puntos, la partida termina; en caso contrario, el anfitrión puede iniciar otra ronda. La variante de cierre debe probarse con las reglas exactas de vuestra mesa antes de usarla como versión definitiva.
+
+
+## Organización y detección de combinaciones
+
+- Puedes arrastrar una carta de tu mano y soltarla sobre otra para cambiar su posición.
+- El orden de tu mano se guarda en la sala de Firebase y solo reorganiza tus propias cartas; no cambia las manos de los demás jugadores.
+- El juego analiza automáticamente los subconjuntos de tu mano y marca en verde todas las cartas que participan en al menos una combinación válida.
+- Las combinaciones detectadas incluyen escaleras del mismo palo, con As bajo o alto, tríos y cuartetos de palos distintos. Las combinaciones pueden solaparse; por eso una carta puede participar en varias.
+
+
+## Aceptación de reglas y ampliación de combinaciones
+
+En la sala de espera se muestran las reglas y cada participante debe marcar «He leído y acepto las reglas». El anfitrión solo puede iniciar cuando todos los jugadores conectados han aceptado. Durante la partida, después de haber abierto y de haber robado en tu turno, puedes arrastrar una carta de tu mano directamente sobre una combinación de la mesa. El juego valida la combinación ampliada: si es válida, la carta se incorpora; si no, permanece en tu mano.

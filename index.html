@@ -26,6 +26,20 @@
       <div class="eyebrow">SALA PRIVADA</div><h2>Esperando jugadores</h2>
       <div class="roomcode"><span id="roomCode">------</span><button id="copyCode" class="small">Copiar código</button></div>
       <p class="muted">Comparte el código con tus amigos.</p>
+      <div class="rules-box">
+        <h3>Antes de jugar: reglas del Rummy</h3>
+        <ul>
+          <li>Se juega con 2 barajas de póker (104 cartas), sin comodines; cada jugador recibe 14 cartas.</li>
+          <li>En tu turno tienes 40 segundos: roba una carta y descarta una.</li>
+          <li>Las escaleras son de 3 o más cartas consecutivas del mismo palo. El As puede ir antes del 2 o después del Rey, pero no enlaza ambos extremos.</li>
+          <li>Los tríos son 3 cartas del mismo valor y palos distintos; los cuartetos son 4, uno de cada palo.</li>
+          <li>Para abrir necesitas 61 puntos; cada jugador que aún no haya abierto debe superar la apertura anterior por al menos 1 punto.</li>
+          <li>Una vez abierto, puedes robar del descarte y añadir cartas a combinaciones de la mesa si siguen siendo válidas.</li>
+          <li>Gana la ronda quien se queda sin cartas. Los puntos de las cartas restantes de los rivales se suman a su marcador; gana la partida quien llega a 100 puntos.</li>
+        </ul>
+        <label class="accept-rules"><input type="checkbox" id="acceptRules"> He leído y acepto las reglas.</label>
+        <p id="acceptStatus" class="muted"></p>
+      </div>
       <div id="players" class="players"></div>
       <div class="lobby-actions"><button id="startBtn" class="primary">Iniciar partida</button><button id="leaveBtn" class="secondary">Salir</button></div>
       <p id="lobbyMsg" class="message"></p>
@@ -39,11 +53,12 @@
           <div class="pile"><div class="pilelabel">MAZO</div><button id="drawDeck" class="deckback">▧</button><small id="deckCount"></small></div>
           <div class="pile"><div class="pilelabel">DESCARTE</div><button id="drawDiscard" class="discardtop">—</button><small id="discardCount"></small></div>
         </div>
-        <div class="meldarea"><div class="areahead">COMBINACIONES EN MESA</div><div id="melds" class="melds"></div></div>
+        <div class="meldarea"><div class="areahead">COMBINACIONES EN MESA</div><div id="melds" class="melds" aria-label="Arrastra aquí una carta para añadirla a una combinación"></div></div>
       </div>
       <div class="handpanel panel">
         <div class="handhead"><div><div class="eyebrow">TU MANO</div><strong id="handCount">0 cartas</strong></div><div class="handtools"><span id="phaseText" class="muted">Tu turno</span><button id="openBtn" class="small">Bajar selección</button><button id="addBtn" class="small">Añadir selección</button><button id="discardBtn" class="primary small">Descartar seleccionada</button></div></div>
         <div id="hand" class="hand"></div>
+        <div id="combinationHints" class="combination-hints" aria-live="polite">Las combinaciones válidas se marcarán automáticamente.</div>
         <p id="gameMsg" class="message"></p>
       </div>
       <div class="bottom-actions"><button id="backLobby" class="secondary">Volver a sala</button><button id="newRound" class="secondary">Nueva ronda (anfitrión)</button></div>
