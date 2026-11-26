@@ -54,8 +54,11 @@ Estas reglas permiten que cualquier usuario autenticado lea/escriba el estado de
 - As vale 10; J/Q/K valen 10; cartas numéricas conservan su valor.
 - Escaleras, tríos y cuartetos.
 - As bajo (A-2-3) y alto (10-J-Q-K-A).
-- Primera apertura desde 61 puntos; cada siguiente apertura debe superar la apertura anterior.
+- Para bajar por primera vez basta con seleccionar una combinación válida (trío, cuarteto o escalera); ya no hay mínimo de puntos.
 - Tras abrir, se puede robar del descarte.
+- Las combinaciones bajadas son visibles para todos los jugadores.
+- Cualquier jugador que ya haya bajado al menos una combinación puede añadir cartas a cualquier combinación de la mesa, durante su turno y después de robar.
+- Las cartas se pueden añadir arrastrándolas desde la mano hasta la combinación; el juego solo las incorpora si la combinación sigue siendo válida.
 - No se permite quitar cartas de combinaciones.
 - Turnos: robar, jugar y descartar una carta.
 - Temporizador de 40 segundos visible y sincronizado mediante el estado de la sala.
@@ -67,9 +70,6 @@ Estas reglas permiten que cualquier usuario autenticado lea/escriba el estado de
 Para no inventar reglas de vuestra variante, quedan por definir:
 - Cómo se puntúa la mano de los jugadores cuando alguien cierra.
 - Qué significa exactamente “terminar con una carta en mano” en relación con las 14 cartas iniciales y el descarte de fin de turno.
-- Si una apertura puede contener varias combinaciones que sumen los puntos requeridos (el código actual solo acepta una combinación por acción).
-- Cómo se calcula la puntuación de apertura de varias combinaciones.
-- Si los jugadores pueden añadir cartas a cualquier combinación siempre que la combinación resultante siga siendo válida. El prototipo comprueba que la combinación completa siga siendo una escalera/trío/cuarteto.
 - Gestión de final de ronda, eliminación al llegar a 100 y cierre de partida.
 
 ## Limitaciones importantes de esta versión
@@ -92,8 +92,3 @@ La puntuación se aplica cuando un jugador se queda sin cartas tras bajar una co
 - El orden de tu mano se guarda en la sala de Firebase y solo reorganiza tus propias cartas; no cambia las manos de los demás jugadores.
 - El juego analiza automáticamente los subconjuntos de tu mano y marca en verde todas las cartas que participan en al menos una combinación válida.
 - Las combinaciones detectadas incluyen escaleras del mismo palo, con As bajo o alto, tríos y cuartetos de palos distintos. Las combinaciones pueden solaparse; por eso una carta puede participar en varias.
-
-
-## Aceptación de reglas y ampliación de combinaciones
-
-En la sala de espera se muestran las reglas y cada participante debe marcar «He leído y acepto las reglas». El anfitrión solo puede iniciar cuando todos los jugadores conectados han aceptado. Durante la partida, después de haber abierto y de haber robado en tu turno, puedes arrastrar una carta de tu mano directamente sobre una combinación de la mesa. El juego valida la combinación ampliada: si es válida, la carta se incorpora; si no, permanece en tu mano.

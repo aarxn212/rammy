@@ -97,21 +97,15 @@ function render(){
  const players=Object.entries(roomData.players||{});const mine=players.find(([id])=>id===uid);
  if(!mine){show("home");return}
  if(roomData.status==="lobby"){
- show("lobby");$("players").innerHTML=players.map(([id,p])=>`<div class="playerrow"><span>${escapeHtml(p.name)} ${id===roomData.host?"♛":""}</span><small>${roomData.rulesAccepted?.[id]?"✓ Reglas aceptadas":"Pendiente de aceptar"}</small></div>`).join("");
- const accepted=players.filter(([id])=>roomData.rulesAccepted?.[id]).length;
- $("acceptRules").checked=!!roomData.rulesAccepted?.[uid];
- $("acceptStatus").textContent=`Han aceptado ${accepted} de ${players.length} jugadores.`;
- const allAccepted=players.length>=2&&players.every(([id])=>roomData.rulesAccepted?.[id]);
- $("startBtn").disabled=uid!==roomData.host||!allAccepted;
- $("startBtn").textContent=players.length<2?"Esperando al menos 2 jugadores":!allAccepted?"Esperando aceptación de todos":"Iniciar partida";return;
+ show("lobby");$("players").innerHTML=players.map(([id,p])=>`<div class="playerrow"><span>${escapeHtml(p.name)} ${id===roomData.host?"♛":""}</span><small>${id===uid?"Tú":"Conectado"}</small></div>`).join("");
+ $("startBtn").disabled=uid!==roomData.host||players.length<2;$("startBtn").textContent=players.length<2?"Esperando al menos 2 jugadores": "Iniciar partida";return;
  }
  show("game");renderGame();
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 async function startGame(){
- const playerIds=Object.keys(roomData.players||{});
- if(uid!==roomData.host||playerIds.length<2||!playerIds.every(id=>roomData.rulesAccepted?.[id]))return msg("lobbyMsg","Todos los jugadores deben aceptar las reglas antes de empezar.");
- const ids=playerIds,cards=deck(),hands={};ids.forEach(id=>hands[id]=cards.splice(0,14));
+ if(uid!==roomData.host||Object.keys(roomData.players||{}).length<2)return;
+ const ids=Object.keys(roomData.players),cards=deck(),hands={};ids.forEach(id=>hands[id]=cards.splice(0,14));
  const state={status:"playing",round:(roomData.round||0)+1,deck:cards,discard:[],hands,melds:[],opened:{},openingOrder:[],turn:ids[0],turnIndex:0,drawn:false,turnStartedAt:Date.now(),lastAction:"Partida iniciada"};
  await update(ref(db,`rooms/${roomId}`),state);
 }
@@ -135,7 +129,7 @@ function renderGame(){
  $("combinationHints").innerHTML=combinations.length
   ? `<span class="hint-check">✓</span> ${combinations.length} combinaciones posibles: ${escapeHtml(comboSummary)}. Las cartas marcadas en verde participan en al menos una.`
   : `No hay combinaciones válidas en tu mano. Arrastra las cartas para ordenarlas.`;
- $("melds").innerHTML=(roomData.melds||[]).map((m,index)=>`<div class="meld drop-meld" data-meld-index="${index}" title="Arrastra aquí una carta de tu mano para añadirla"><small>${escapeHtml(roomData.players[m.owner]?.name||"Jugador")} · ${m.type}</small>${m.cards.map(c=>cardHtml(c)).join("")}</div>`).join("");
+ $("melds").innerHTML=(roomData.melds||[]).map((m,i)=>`<div class="meld" data-meld="${i}" title="Arrastra aquí una carta para añadirla"><small>${escapeHtml(roomData.players[m.owner]?.name||"Jugador")}</small>${m.cards.map(c=>cardHtml(c)).join("")}</div>`).join("");
  $("openBtn").disabled=!playing||!myTurn||!roomData.drawn||opened;$("addBtn").disabled=!playing||!myTurn||!roomData.drawn||!opened;
  $("discardBtn").disabled=!playing||!myTurn||!roomData.drawn;
  msg("gameMsg",roomData.status==="finished"?`${roomData.lastAction} ¡Partida terminada!`:roomData.status==="roundEnd"?`${roomData.lastAction} Puedes iniciar la siguiente ronda.`:(roomData.lastAction||""));
@@ -155,28 +149,35 @@ function finishRound(r,winnerId){
  r.lastAction=`${r.players?.[winnerId]?.name||"Un jugador"} gana la ronda y suma ${earned} puntos. Marcador: ${r.scores[winnerId]}.`;
 }
 async function openMeld(){
- const cards=selectedCards();if(!cards.length)return msg("gameMsg","Selecciona las cartas que quieres bajar.");
- await mutate(r=>{if(r.opened?.[uid]||!r.drawn)return false;const valid=validSet(cards);if(!valid)return false;const points=valid.points;const previous=r.openingOrder?.at(-1);const min=previous?previous.points+1:61;if(points<min){msg("gameMsg",`Necesitas al menos ${min} puntos para abrir.`);return false}
- const ids=new Set(cards.map(c=>c.id));r.hands[uid]=r.hands[uid].filter(c=>!ids.has(c.id));r.melds.push({owner:uid,cards,type:valid.type});r.opened[uid]=true;r.openingOrder=r.openingOrder||[];r.openingOrder.push({uid,points});r.lastAction=`${r.players[uid].name} ha abierto con ${points} puntos.`;if(r.hands[uid].length===0)finishRound(r,uid);});
+ const cards=selectedCards();if(!cards.length)return msg("gameMsg","Selecciona una combinación para bajarla.");
+ await mutate(r=>{
+  if(r.opened?.[uid]||!r.drawn)return false;
+  const valid=validSet(cards);
+  if(!valid){msg("gameMsg","La selección no forma una combinación válida. Selecciona un trío, cuarteto o escalera.");return false}
+  const ids=new Set(cards.map(c=>c.id));
+  r.hands[uid]=r.hands[uid].filter(c=>!ids.has(c.id));
+  r.melds=r.melds||[];r.melds.push({owner:uid,cards,type:valid.type});
+  r.opened=r.opened||{};r.opened[uid]=true;
+  r.lastAction=`${r.players[uid].name} ha bajado una combinación (${valid.type}).`;
+  if(r.hands[uid].length===0)finishRound(r,uid);
+ });
 }
 async function addMeld(){
  const cards=selectedCards();if(!cards.length)return msg("gameMsg","Selecciona cartas para añadir.");
  await mutate(r=>{if(!r.opened?.[uid]||!r.drawn)return false;let hand=r.hands[uid];for(const c of cards){let found=false;for(const m of r.melds){const candidate=[...m.cards,c],v=validSet(candidate);if(v){m.cards=candidate;m.type=v.type;hand=hand.filter(x=>x.id!==c.id);found=true;break}}if(!found)return false}r.hands[uid]=hand;r.lastAction=`${r.players[uid].name} ha añadido ${cards.length} carta(s).`;if(hand.length===0)finishRound(r,uid)});
 }
 async function addCardToMeld(cardId,meldIndex){
- if(!cardId||meldIndex===null||meldIndex===undefined)return;
- if(!roomData?.opened?.[uid])return msg("gameMsg","Debes haber abierto antes de añadir cartas a la mesa.");
- if(roomData.turn!==uid||!roomData.drawn)return msg("gameMsg","Solo puedes añadir cartas durante tu turno, después de robar.");
- const previewCard=(roomData.hands?.[uid]||[]).find(c=>c.id===cardId),previewMeld=roomData.melds?.[Number(meldIndex)];
- if(!previewCard||!previewMeld||!validSet([...previewMeld.cards,previewCard]))return msg("gameMsg","Esa carta no mantiene una combinación válida. Sigue en tu mano.");
+ if(!cardId)return;
  await mutate(r=>{
-  const hand=r.hands?.[uid]||[],cardIndex=hand.findIndex(c=>c.id===cardId),meld=r.melds?.[Number(meldIndex)];
-  if(cardIndex<0||!meld)return false;
-  const card=hand[cardIndex],candidate=[...meld.cards,card],valid=validSet(candidate);
-  if(!valid){msg("gameMsg","Esa carta no mantiene una combinación válida. Sigue en tu mano.");return false}
-  meld.cards=candidate;meld.type=valid.type;hand.splice(cardIndex,1);r.hands[uid]=hand;
-  r.lastAction=`${r.players[uid].name} ha añadido ${cardText(card)} a una combinación.`;
-  if(hand.length===0)finishRound(r,uid);
+  if(!r.opened?.[uid]||!r.drawn)return false;
+  const hand=r.hands?.[uid]||[],card=hand.find(c=>c.id===cardId),meld=r.melds?.[meldIndex];
+  if(!card||!meld)return false;
+  const candidate=[...meld.cards,card],valid=validSet(candidate);
+  if(!valid){msg("gameMsg","Esa carta no encaja en esa combinación.");return false}
+  meld.cards=candidate;meld.type=valid.type;
+  r.hands[uid]=hand.filter(c=>c.id!==cardId);
+  r.lastAction=`${r.players[uid].name} ha añadido ${cardText(card)} a una combinación de ${r.players[meld.owner]?.name||"un jugador"}.`;
+  if(r.hands[uid].length===0)finishRound(r,uid);
  });
 }
 
@@ -238,11 +239,6 @@ async function newRound(){
  await update(ref(db,`rooms/${roomId}`),{status:"playing",round:(roomData.round||0)+1,deck:cards,discard:[],hands,melds:[],opened:{},openingOrder:[],turn:ids[0],drawn:false,turnStartedAt:Date.now(),lastAction:"Nueva ronda"});
 }
 async function leave(){if(unsubscribe)unsubscribe();try{if(roomId&&uid)await update(ref(db,`rooms/${roomId}/players`),{[uid]:null})}catch{}roomId=null;roomData=null;show("home")}
-$("acceptRules").onchange=async e=>{
- if(!roomId||!uid||roomData?.status!=="lobby")return;
- try{await update(ref(db,`rooms/${roomId}/rulesAccepted`),{[uid]:e.target.checked?true:null});}
- catch(err){msg("lobbyMsg",friendly(err))}
-};
 $("createBtn").onclick=createRoom;$("joinBtn").onclick=joinRoom;$("startBtn").onclick=startGame;$("leaveBtn").onclick=leave;$("backLobby").onclick=()=>show("lobby");$("newRound").onclick=newRound;
 $("copyCode").onclick=()=>navigator.clipboard?.writeText(roomId).then(()=>msg("lobbyMsg","Código copiado."));
 $("drawDeck").onclick=()=>draw("deck");$("drawDiscard").onclick=()=>draw("discard");$("openBtn").onclick=openMeld;$("addBtn").onclick=addMeld;$("discardBtn").onclick=discard;
@@ -272,17 +268,22 @@ handEl.addEventListener("dragend",e=>{
  handEl.querySelectorAll(".drag-over").forEach(card=>card.classList.remove("drag-over"));
  if(draggedCardId)lastDragAt=Date.now();draggedCardId=null;
 });
-const meldAreaEl=$("melds");
-meldAreaEl.addEventListener("dragover",e=>{
- const target=e.target.closest("[data-meld-index]");if(!target||!draggedCardId)return;
- e.preventDefault();e.dataTransfer.dropEffect="move";target.classList.add("meld-drop-over");
+const meldsEl=$("melds");
+meldsEl.addEventListener("dragover",e=>{
+ const target=e.target.closest("[data-meld]");
+ if(!target||!draggedCardId||!roomData?.opened?.[uid]||roomData.turn!==uid||!roomData.drawn)return;
+ e.preventDefault();e.dataTransfer.dropEffect="move";target.classList.add("meld-drop-target");
 });
-meldAreaEl.addEventListener("dragleave",e=>{const target=e.target.closest("[data-meld-index]");if(target&&!target.contains(e.relatedTarget))target.classList.remove("meld-drop-over")});
-meldAreaEl.addEventListener("drop",async e=>{
- const target=e.target.closest("[data-meld-index]");if(!target||!draggedCardId)return;
- e.preventDefault();target.classList.remove("meld-drop-over");const id=draggedCardId,index=target.dataset.meldIndex;
- draggedCardId=null;lastDragAt=Date.now();await addCardToMeld(id,index);
+meldsEl.addEventListener("dragleave",e=>{
+ const target=e.target.closest("[data-meld]");if(target&&!target.contains(e.relatedTarget))target.classList.remove("meld-drop-target");
 });
+meldsEl.addEventListener("drop",async e=>{
+ const target=e.target.closest("[data-meld]");if(!target||!draggedCardId)return;
+ e.preventDefault();target.classList.remove("meld-drop-target");
+ const cardId=draggedCardId,index=Number(target.dataset.meld);draggedCardId=null;lastDragAt=Date.now();
+ await addCardToMeld(cardId,index);
+});
+
 $("roomInput").oninput=e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
 $("playerName").value=localStorage.getItem("rummyName")||"";$("playerName").addEventListener("change",()=>localStorage.setItem("rummyName",cleanName($("playerName").value)));
 init();
