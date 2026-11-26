@@ -130,7 +130,7 @@ function renderGame(){
   ? `<span class="hint-check">✓</span> ${combinations.length} combinaciones posibles: ${escapeHtml(comboSummary)}. Las cartas marcadas en verde participan en al menos una.`
   : `No hay combinaciones válidas en tu mano. Arrastra las cartas para ordenarlas.`;
  $("melds").innerHTML=(roomData.melds||[]).map((m,i)=>`<div class="meld" data-meld="${i}" title="Arrastra aquí una carta para añadirla"><small>${escapeHtml(roomData.players[m.owner]?.name||"Jugador")}</small>${m.cards.map(c=>cardHtml(c)).join("")}</div>`).join("");
- $("openBtn").disabled=!playing||!myTurn||!roomData.drawn||opened;$("addBtn").disabled=!playing||!myTurn||!roomData.drawn||!opened;
+ $("openBtn").disabled=!playing||!myTurn||!roomData.drawn;$("addBtn").disabled=!playing||!myTurn||!roomData.drawn||!opened;
  $("discardBtn").disabled=!playing||!myTurn||!roomData.drawn||myHand.length===1;
  const winBtn=$("winBtn");
  if(winBtn){winBtn.classList.toggle("hidden",!playing||!myTurn||!roomData.drawn||myHand.length!==1);winBtn.disabled=!playing||!myTurn||!roomData.drawn||myHand.length!==1;}
@@ -168,7 +168,7 @@ function finishRound(r,winnerId){
 async function openMeld(){
  const cards=selectedCards();if(!cards.length)return msg("gameMsg","Selecciona una combinación para bajarla.");
  await mutate(r=>{
-  if(r.opened?.[uid]||!r.drawn)return false;
+  if(!r.drawn)return false;
   const valid=validSet(cards);
   if(!valid){msg("gameMsg","La selección no forma una combinación válida. Selecciona un trío, cuarteto o escalera.");return false}
   const ids=new Set(cards.map(c=>c.id));
