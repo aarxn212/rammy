@@ -12,3 +12,16 @@
 .combination-hints{margin:0 5px 8px;color:#b9d8c3;font-size:12px;line-height:1.5;}
 .hint-check{color:#49d889;font-weight:900;font-size:15px;margin-right:4px;}
 .meld{transition:border-color .15s,background .15s}.meld.meld-drop-target{border:2px dashed var(--gold);background:#174b35;}
+
+/* Victoria manual y marcador de ronda */
+.win-button{background:#35c878;border-color:#35c878;color:#092318;font-weight:900;box-shadow:0 0 0 2px #35c87833;}
+.win-button:hover{filter:brightness(1.08);}
+.scoreboard{margin:0 0 14px;border-color:#c5a85c;background:linear-gradient(145deg,#243a2a,#17291f);}
+.scoreboard h2{margin:0 0 8px;color:var(--gold);}
+.scoreboard p{margin:8px 0 14px;}
+.scoreboard-scroll{overflow-x:auto;}
+.scoreboard table{width:100%;border-collapse:collapse;font-size:13px;}
+.scoreboard th,.scoreboard td{text-align:left;padding:11px 12px;border-bottom:1px solid #ffffff20;}
+.scoreboard th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:1px;}
+.scoreboard td:last-child,.scoreboard th:last-child{text-align:right;}
+.scoreboard .winner-row td{color:#f3d98c;font-weight:800;}

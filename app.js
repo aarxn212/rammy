@@ -131,7 +131,19 @@ function renderGame(){
   : `No hay combinaciones válidas en tu mano. Arrastra las cartas para ordenarlas.`;
  $("melds").innerHTML=(roomData.melds||[]).map((m,i)=>`<div class="meld" data-meld="${i}" title="Arrastra aquí una carta para añadirla"><small>${escapeHtml(roomData.players[m.owner]?.name||"Jugador")}</small>${m.cards.map(c=>cardHtml(c)).join("")}</div>`).join("");
  $("openBtn").disabled=!playing||!myTurn||!roomData.drawn||opened;$("addBtn").disabled=!playing||!myTurn||!roomData.drawn||!opened;
- $("discardBtn").disabled=!playing||!myTurn||!roomData.drawn;
+ $("discardBtn").disabled=!playing||!myTurn||!roomData.drawn||myHand.length===1;
+ const winBtn=$("winBtn");
+ if(winBtn){winBtn.classList.toggle("hidden",!playing||!myTurn||!roomData.drawn||myHand.length!==1);winBtn.disabled=!playing||!myTurn||!roomData.drawn||myHand.length!==1;}
+ const scoreboard=$("scoreboard");
+ if(scoreboard){
+  const ended=roomData.status==="roundEnd"||roomData.status==="finished";
+  scoreboard.classList.toggle("hidden",!ended);
+  if(ended){
+   const winner=roomData.players?.[roomData.roundWinner]?.name||"Jugador";
+   const rows=ids.map(id=>`<tr class="${id===roomData.roundWinner?"winner-row":""}"><td>${escapeHtml(roomData.players[id].name)}${id===roomData.roundWinner?" 🏆":""}</td><td>${roomData.roundBreakdown?.[id]??0}</td><td><strong>${roomData.scores?.[id]||0}</strong></td></tr>`).join("");
+   scoreboard.innerHTML=`<div class="eyebrow">${roomData.status==="finished"?"PARTIDA TERMINADA":"FIN DE RONDA"}</div><h2>${roomData.status==="finished"?"¡Victoria de "+escapeHtml(winner)+"!":"¡"+escapeHtml(winner)+" gana la ronda!"}</h2><p class="muted">${escapeHtml(winner)} suma <strong>${roomData.roundPoints||0} puntos</strong> por las cartas que quedan en las manos de los demás.</p><div class="scoreboard-scroll"><table><thead><tr><th>Jugador</th><th>Puntos en mano</th><th>Marcador total</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+ }
  msg("gameMsg",roomData.status==="finished"?`${roomData.lastAction} ¡Partida terminada!`:roomData.status==="roundEnd"?`${roomData.lastAction} Puedes iniciar la siguiente ronda.`:(roomData.lastAction||""));
 }
 async function mutate(fn){
@@ -142,10 +154,15 @@ async function draw(which){
  await mutate(r=>{if(r.drawn)return false;if(which==="discard"){if(!r.opened?.[uid]||!r.discard?.length)return false;r.hands[uid].push(r.discard.pop())}else{if(!r.deck?.length)return false;r.hands[uid].push(r.deck.pop())}r.drawn=true;r.lastAction=`${r.players[uid].name} ha robado una carta.`});
 }
 function finishRound(r,winnerId){
- const ids=Object.keys(r.players||{});let earned=0;
- for(const id of ids){if(id===winnerId)continue;earned+=(r.hands?.[id]||[]).reduce((sum,c)=>sum+cardPoints(c),0)}
+ const ids=Object.keys(r.players||{});let earned=0;const breakdown={};
+ for(const id of ids){
+  const points=(r.hands?.[id]||[]).reduce((sum,c)=>sum+cardPoints(c),0);
+  breakdown[id]=points;
+  if(id!==winnerId)earned+=points;
+ }
  r.scores=r.scores||{};r.scores[winnerId]=(r.scores[winnerId]||0)+earned;
- r.roundWinner=winnerId;r.roundPoints=earned;r.status=r.scores[winnerId]>=100?"finished":"roundEnd";
+ r.roundWinner=winnerId;r.roundPoints=earned;r.roundBreakdown=breakdown;
+ r.status=r.scores[winnerId]>=100?"finished":"roundEnd";
  r.lastAction=`${r.players?.[winnerId]?.name||"Un jugador"} gana la ronda y suma ${earned} puntos. Marcador: ${r.scores[winnerId]}.`;
 }
 async function openMeld(){
@@ -181,9 +198,18 @@ async function addCardToMeld(cardId,meldIndex){
  });
 }
 
+async function claimWin(){
+ await mutate(r=>{
+  const hand=r.hands?.[uid]||[];
+  if(!r.drawn||hand.length!==1)return false;
+  finishRound(r,uid);
+  return true;
+ });
+}
+
 async function discard(){
  const cards=selectedCards();if(cards.length!==1)return msg("gameMsg","Selecciona exactamente una carta para descartar.");
- await mutate(r=>{if(!r.drawn)return false;const hand=r.hands[uid],idx=hand.findIndex(c=>c.id===cards[0].id);if(idx<0)return false;const [c]=hand.splice(idx,1);r.discard.push(c);
+ await mutate(r=>{if(!r.drawn||(r.hands?.[uid]||[]).length===1)return false;const hand=r.hands[uid],idx=hand.findIndex(c=>c.id===cards[0].id);if(idx<0)return false;const [c]=hand.splice(idx,1);r.discard.push(c);
  // Turn advances; rule about hand-size/end-of-turn is kept as stated by the user for later confirmation.
  if(hand.length===0){finishRound(r,uid);return;}const ids=Object.keys(r.players),i=ids.indexOf(uid),next=ids[(i+1)%ids.length];r.turn=next;r.drawn=false;r.turnStartedAt=Date.now();r.lastAction=`${r.players[uid].name} ha descartado ${cardText(c)}.`;});
 }
@@ -236,12 +262,12 @@ setInterval(()=>{
 async function newRound(){
  if(uid!==roomData.host||roomData.status==="finished")return;
  const ids=Object.keys(roomData.players),cards=deck(),hands={};ids.forEach(id=>hands[id]=cards.splice(0,14));
- await update(ref(db,`rooms/${roomId}`),{status:"playing",round:(roomData.round||0)+1,deck:cards,discard:[],hands,melds:[],opened:{},openingOrder:[],turn:ids[0],drawn:false,turnStartedAt:Date.now(),lastAction:"Nueva ronda"});
+ await update(ref(db,`rooms/${roomId}`),{status:"playing",round:(roomData.round||0)+1,deck:cards,discard:[],hands,melds:[],opened:{},openingOrder:[],roundWinner:null,roundPoints:0,roundBreakdown:{},turn:ids[0],drawn:false,turnStartedAt:Date.now(),lastAction:"Nueva ronda"});
 }
 async function leave(){if(unsubscribe)unsubscribe();try{if(roomId&&uid)await update(ref(db,`rooms/${roomId}/players`),{[uid]:null})}catch{}roomId=null;roomData=null;show("home")}
 $("createBtn").onclick=createRoom;$("joinBtn").onclick=joinRoom;$("startBtn").onclick=startGame;$("leaveBtn").onclick=leave;$("backLobby").onclick=()=>show("lobby");$("newRound").onclick=newRound;
 $("copyCode").onclick=()=>navigator.clipboard?.writeText(roomId).then(()=>msg("lobbyMsg","Código copiado."));
-$("drawDeck").onclick=()=>draw("deck");$("drawDiscard").onclick=()=>draw("discard");$("openBtn").onclick=openMeld;$("addBtn").onclick=addMeld;$("discardBtn").onclick=discard;
+$("drawDeck").onclick=()=>draw("deck");$("drawDiscard").onclick=()=>draw("discard");$("openBtn").onclick=openMeld;$("addBtn").onclick=addMeld;$("discardBtn").onclick=discard;$("winBtn").onclick=claimWin;
 const handEl=$("hand");
 handEl.onclick=e=>{
  if(Date.now()-lastDragAt<350)return;

@@ -33,6 +33,7 @@
 
     <section id="game" class="hidden">
       <div class="gamebar panel"><div><div class="eyebrow">SALA <b id="gameRoomCode"></b></div><div class="turnstatus"><strong id="turnText">Preparando partida…</strong><span class="timer" id="turnTimer">40s</span></div></div><div class="scoreline" id="scoreline"></div></div>
+      <section id="scoreboard" class="panel scoreboard hidden" aria-live="polite"></section>
       <div class="table panel">
         <div id="opponents" class="opponents"></div>
         <div class="piles">
@@ -42,7 +43,7 @@
         <div class="meldarea"><div class="areahead">COMBINACIONES EN MESA</div><div id="melds" class="melds"></div></div>
       </div>
       <div class="handpanel panel">
-        <div class="handhead"><div><div class="eyebrow">TU MANO</div><strong id="handCount">0 cartas</strong></div><div class="handtools"><span id="phaseText" class="muted">Tu turno</span><button id="openBtn" class="small">Bajar selección</button><button id="addBtn" class="small">Añadir selección</button><button id="discardBtn" class="primary small">Descartar seleccionada</button></div></div>
+        <div class="handhead"><div><div class="eyebrow">TU MANO</div><strong id="handCount">0 cartas</strong></div><div class="handtools"><span id="phaseText" class="muted">Tu turno</span><button id="openBtn" class="small">Bajar selección</button><button id="addBtn" class="small">Añadir selección</button><button id="winBtn" class="win-button small hidden">Ganar</button><button id="discardBtn" class="primary small">Descartar seleccionada</button></div></div>
         <div id="hand" class="hand"></div>
         <div id="combinationHints" class="combination-hints" aria-live="polite">Las combinaciones válidas se marcarán automáticamente.</div>
         <p id="gameMsg" class="message"></p>
